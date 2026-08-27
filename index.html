@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>員工出勤請假管理系統</title>
+    <!-- Tailwind CSS (UI框架) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome (圖示) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (Excel匯出套件) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        /* 馬卡龍色系客製化 */
+        body { background-color: #FAF5FF; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
+        .bg-macaron-pink { background-color: #FCE7F3; }
+        .bg-macaron-blue { background-color: #E0F2FE; }
+        .bg-macaron-green { background-color: #D1FAE5; }
+        .bg-macaron-yellow { background-color: #FEF3C7; }
+        .bg-macaron-purple { background-color: #EDE9FE; }
+        
+        .btn-macaron-primary { background-color: #F472B6; color: white; }
+        .btn-macaron-primary:hover { background-color: #EC4899; }
+        .btn-macaron-secondary { background-color: #38BDF8; color: white; }
+        .btn-macaron-secondary:hover { background-color: #0284C7; }
+        .btn-macaron-success { background-color: #34D399; color: white; }
+        .btn-macaron-success:hover { background-color: #10B981; }
+
+        .card-shadow { box-shadow: 0 10px 25px -5px rgba(192, 132, 252, 0.15), 0 8px 10px -6px rgba(192, 132, 252, 0.1); }
+    </style>
+</head>
+<body class="text-gray-700 pb-12">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-white border-b border-purple-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-macaron-pink flex items-center justify-center text-pink-500 font-bold text-xl">
+                    <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800">出勤請假管理系統</h1>
+            </div>
+            <!-- 備份/匯入匯出 -->
+            <div class="flex space-x-2 text-sm">
+                <button onclick="exportJSON()" class="px-3 py-1.5 rounded-lg bg-macaron-blue text-sky-700 hover:bg-sky-200 transition">
+                    <i class="fa-solid fa-download mr-1"></i>備份紀錄
+                </button>
+                <label class="px-3 py-1.5 rounded-lg bg-macaron-green text-emerald-700 hover:bg-emerald-200 transition cursor-pointer">
+                    <i class="fa-solid fa-upload mr-1"></i>還原紀錄
+                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importJSON(event)">
+                </label>
+                <button onclick="exportExcel()" class="px-3 py-1.5 rounded-lg bg-macaron-yellow text-amber-700 hover:bg-amber-200 transition">
+                    <i class="fa-solid fa-file-excel mr-1"></i>匯出 Excel
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        
+        <!-- 分頁標籤 -->
+        <div class="flex space-x-2 border-b border-purple-200 mb-6">
+            <button id="tab-btn-record" onclick="switchTab('record')" class="px-5 py-2.5 font-bold rounded-t-xl transition bg-white text-pink-500 border-t-2 border-x border-pink-400">
+                <i class="fa-solid fa-pen-to-square mr-2"></i>請假登記與明細
+            </button>
+            <button id="tab-btn-stats" onclick="switchTab('stats')" class="px-5 py-2.5 font-bold rounded-t-xl transition text-gray-500 hover:text-pink-500">
+                <i class="fa-solid fa-chart-pie mr-2"></i>月度統計報表
+            </button>
+            <button id="tab-btn-settings" onclick="switchTab('settings')" class="px-5 py-2.5 font-bold rounded-t-xl transition text-gray-500 hover:text-pink-500">
+                <i class="fa-solid fa-sliders mr-2"></i>人員與類別設定
+            </button>
+        </div>
+
+        <!-- ==================== 分頁 1：請假登記 ==================== -->
+        <div id="tab-record" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 新增請假 Form -->
+            <div class="bg-white p-6 rounded-2xl card-shadow border border-purple-50 h-fit">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b flex items-center">
+                    <i class="fa-solid fa-plus-circle text-pink-400 mr-2"></i>新增請假紀錄
+                </h2>
+                <form id="leaveForm" onsubmit="handleLeaveSubmit(event)">
+                    <!-- 選擇員工 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">員工</label>
+                        <select id="leaveEmp" required class="w-full border-gray-200 rounded-lg p-2.5 border focus:ring-2 focus:ring-pink-300 outline-none">
+                            <!-- JS 動態渲染 -->
+                        </select>
+                    </div>
+
+                    <!-- 選擇假別 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">假別</label>
+                        <select id="leaveType" required class="w-full border-gray-200 rounded-lg p-2.5 border focus:ring-2 focus:ring-pink-300 outline-none">
+                            <!-- JS 動態渲染 -->
+                        </select>
+                    </div>
+
+                    <!-- 請假起訖時間 -->
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-sm font-medium">請假起始時間</label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="startDate" required class="border-gray-200 rounded-lg p-2 border text-sm">
+                            <input type="time" id="startTime" class="border-gray-200 rounded-lg p-2 border text-sm">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-sm font-medium">請假結束時間</label>
+                            <label class="text-xs text-pink-500 flex items-center cursor-pointer">
+                                <input type="checkbox" id="sameDayCheck" onchange="toggleSameDay(this)" class="mr-1 rounded"> 同日
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="endDate" required class="border-gray-200 rounded-lg p-2 border text-sm">
+                            <input type="time" id="endTime" class="border-gray-200 rounded-lg p-2 border text-sm">
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">* 若未填寫具體時間，每一整天預設以 8 小時計算</p>
+                    </div>
+
+                    <!-- 請假原由 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-1">請假原由</label>
+                        <textarea id="leaveReason" rows="2" class="w-full border-gray-200 rounded-lg p-2.5 border text-sm focus:ring-2 focus:ring-pink-300 outline-none" placeholder="請輸入請假原因..."></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full py-2.5 rounded-xl btn-macaron-primary font-bold shadow-sm transition">儲存請假紀錄</button>
+                </form>
+            </div>
+
+            <!-- 請假紀錄清單 -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl card-shadow border border-purple-50">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b flex items-center justify-between">
+                    <span><i class="fa-solid fa-list text-sky-400 mr-2"></i>請假紀錄歷史</span>
+                    <span class="text-xs text-gray-400 font-normal">共 <span id="recordCount">0</span> 筆</span>
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-purple-50 text-gray-600 border-b">
+                                <th class="p-3 rounded-l-lg">姓名 (部門)</th>
+                                <th class="p-3">假別</th>
+                                <th class="p-3">起訖時間</th>
+                                <th class="p-3">時數計算</th>
+                                <th class="p-3">事由</th>
+                                <th class="p-3 rounded-r-lg text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordTableBody">
+                            <!-- JS 動態渲染 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 分頁 2：月度統計報表 ==================== -->
+        <div id="tab-stats" class="hidden bg-white p-6 rounded-2xl card-shadow border border-purple-50">
+            <!-- 篩選與排序 -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b">
+                <div class="flex items-center space-x-3">
+                    <label class="font-bold text-gray-700">選擇月份：</label>
+                    <input type="month" id="statsMonth" onchange="renderStats()" class="border-gray-200 rounded-lg p-2 border focus:ring-2 focus:ring-pink-300 outline-none">
+                </div>
+                <div class="flex items-center space-x-3">
+                    <label class="font-bold text-gray-700">排序方式：</label>
+                    <select id="statsSort" onchange="renderStats()" class="border-gray-200 rounded-lg p-2 border text-sm">
+                        <option value="dept">按部門排序</option>
+                        <option value="name">按姓名排序</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 統計表格 -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr id="statsHeader" class="bg-macaron-purple text-purple-900 border-b">
+                            <!-- JS 動態渲染標題列 -->
+                        </tr>
+                    </thead>
+                    <tbody id="statsTableBody">
+                        <!-- JS 動態渲染 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ==================== 分頁 3：人員與類別設定 ==================== -->
+        <div id="tab-settings" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- 員工管理 -->
+            <div class="bg-white p-6 rounded-2xl card-shadow border border-purple-50">
+                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-users text-pink-400 mr-2"></i>員工管理</h2>
+                <div class="space-y-3 mb-4">
+                    <input type="text" id="newEmpName" placeholder="員工姓名" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
+                    <select id="newEmpDept" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
+                        <!-- JS 動態渲染部門下拉選單 -->
+                    </select>
+                    <button onclick="addEmployee()" class="w-full py-2 rounded-lg btn-macaron-primary text-sm font-bold">新增員工</button>
+                </div>
+                <ul id="empList" class="divide-y text-sm max-h-60 overflow-y-auto">
+                    <!-- JS 動態渲染 -->
+                </ul>
+            </div>
+
+            <!-- 部門別管理 -->
+            <div class="bg-white p-6 rounded-2xl card-shadow border border-purple-50">
+                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-building text-sky-400 mr-2"></i>部門別長駐選項</h2>
+                <div class="flex space-x-2 mb-4">
+                    <input type="text" id="newDeptInput" placeholder="新部門名稱" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
+                    <button onclick="addDepartment()" class="px-4 py-2 rounded-lg btn-macaron-secondary text-sm font-bold whitespace-nowrap">新增</button>
+                </div>
+                <ul id="deptList" class="divide-y text-sm max-h-60 overflow-y-auto">
+                    <!-- JS 動態渲染 -->
+                </ul>
+            </div>
+
+            <!-- 假別管理 -->
+            <div class="bg-white p-6 rounded-2xl card-shadow border border-purple-50">
+                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-tags text-emerald-400 mr-2"></i>假別長駐選項</h2>
+                <div class="flex space-x-2 mb-4">
+                    <input type="text" id="newLeaveTypeInput" placeholder="新假別名稱" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
+                    <button onclick="addLeaveType()" class="px-4 py-2 rounded-lg btn-macaron-success text-sm font-bold whitespace-nowrap">新增</button>
+                </div>
+                <ul id="leaveTypeList" class="divide-y text-sm max-h-60 overflow-y-auto">
+                    <!-- JS 動態渲染 -->
+                </ul>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JS Logic -->
+    <script>
+        // 初始化預設資料結構
+        const defaultData = {
+            departments: ["管理部", "開發部", "設計部", "行銷部"],
+            leaveTypes: ["特休", "補休", "事假", "病假", "生理假", "遲到"],
+            employees: [
+                { id: "e1", name: "王小明", dept: "開發部" },
+                { id: "e2", name: "陳美麗", dept: "設計部" }
+            ],
+            records: []
+        };
+
+        // 從 LocalStorage 載入資料或使用預設資料
+        let appData = JSON.parse(localStorage.getItem('hr_leave_app_data')) || defaultData;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 設定月度統計預設為當月
+            const today = new Date();
+            const yearMonth = today.toISOString().slice(0, 7);
+            document.getElementById('statsMonth').value = yearMonth;
+            
+            // 初始化選單與渲染
+            renderAll();
+        });
+
+        // 儲存至 LocalStorage
+        function saveData() {
+            localStorage.setItem('hr_leave_app_data', JSON.stringify(appData));
+            renderAll();
+        }
+
+        // 渲染全頁 UI
+        function renderAll() {
+            renderOptions();
+            renderRecordList();
+            renderStats();
+            renderSettings();
+        }
+
+        // 分頁切換
+        function switchTab(tabName) {
+            ['record', 'stats', 'settings'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-btn-${t}`);
+                btn.className = "px-5 py-2.5 font-bold rounded-t-xl transition text-gray-500 hover:text-pink-500";
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            activeBtn.className = "px-5 py-2.5 font-bold rounded-t-xl transition bg-white text-pink-500 border-t-2 border-x border-pink-400";
+        }
+
+        // 同日連動勾選
+        function toggleSameDay(checkbox) {
+            const startDate = document.getElementById('startDate').value;
+            const endDateInput = document.getElementById('endDate');
+            if (checkbox.checked) {
+                endDateInput.value = startDate;
+                endDateInput.disabled = true;
+            } else {
+                endDateInput.disabled = false;
+            }
+        }
+        document.getElementById('startDate').addEventListener('change', (e) => {
+            if (document.getElementById('sameDayCheck').checked) {
+                document.getElementById('endDate').value = e.target.value;
+            }
+        });
+
+        // 渲染下拉選單
+        function renderOptions() {
+            // 請假登記-員工下拉
+            const empSelect = document.getElementById('leaveEmp');
+            empSelect.innerHTML = appData.employees.map(e => `<option value="${e.id}">${e.name} (${e.dept})</option>`).join('');
+            
+            // 請假登記-假別下拉
+            const typeSelect = document.getElementById('leaveType');
+            typeSelect.innerHTML = appData.leaveTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+
+            // 新增員工-部門下拉
+            const deptSelect = document.getElementById('newEmpDept');
+            deptSelect.innerHTML = appData.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+        }
+
+        // 計算請假分鐘數與格式化字串
+        function calculateLeaveDuration(startDateStr, startTimeStr, endDateStr, endTimeStr) {
+            if (!startTimeStr || !endTimeStr) {
+                // 未填寫時間：按全天算 (每天 8 小時)
+                const start = new Date(startDateStr);
+                const end = new Date(endDateStr);
+                const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                const totalMinutes = diffDays > 0 ? diffDays * 8 * 60 : 0;
+                return { totalMinutes, display: `${diffDays * 8} 小時 (共 ${diffDays} 天)` };
+            } else {
+                // 有填寫精確時間
+                const start = new Date(`${startDateStr}T${startTimeStr}`);
+                const end = new Date(`${endDateStr}T${endTimeStr}`);
+                let diffMins = Math.floor((end - start) / (1000 * 60));
+                if (diffMins < 0) diffMins = 0;
+
+                return { totalMinutes: diffMins, display: formatMinutes(diffMins) };
+            }
+        }
+
+        // 分鐘轉格式化文字 (例如 2.5 小時 或 2 h 15 min)
+        function formatMinutes(mins) {
+            if (mins <= 0) return '0 小時';
+            const hours = Math.floor(mins / 60);
+            const remainingMins = mins % 60;
+            
+            if (remainingMins === 0) {
+                return `${hours} 小時`;
+            } else if (remainingMins === 30) {
+                return `${hours + 0.5} 小時`;
+            } else {
+                return `${hours > 0 ? hours + ' h ' : ''}${remainingMins} min`;
+            }
+        }
+
+        // 新增請假紀錄
+        function handleLeaveSubmit(e) {
+            e.preventDefault();
+            const empId = document.getElementById('leaveEmp').value;
+            const type = document.getElementById('leaveType').value;
+            const startDate = document.getElementById('startDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const endDate = document.getElementById('endDate').value;
+            const endTime = document.getElementById('endTime').value;
+            const reason = document.getElementById('leaveReason').value;
+
+            const duration = calculateLeaveDuration(startDate, startTime, endDate, endTime);
+
+            const newRecord = {
+                id: 'rec_' + Date.now(),
+                empId,
+                type,
+                startDate,
+                startTime,
+                endDate,
+                endTime,
+                minutes: duration.totalMinutes,
+                reason
+            };
+
+            appData.records.unshift(newRecord);
+            saveData();
+            document.getElementById('leaveForm').reset();
+            document.getElementById('sameDayCheck').checked = false;
+            document.getElementById('endDate').disabled = false;
+        }
+
+        // 刪除請假紀錄
+        function deleteRecord(id) {
+            if(confirm('確定要刪除這筆請假紀錄嗎？')) {
+                appData.records = appData.records.filter(r => r.id !== id);
+                saveData();
+            }
+        }
+
+        // 渲染請假紀錄清單
+        function renderRecordList() {
+            const tbody = document.getElementById('recordTableBody');
+            document.getElementById('recordCount').innerText = appData.records.length;
+
+            tbody.innerHTML = appData.records.map(r => {
+                const emp = appData.employees.find(e => e.id === r.empId) || { name: '已刪除員工', dept: '-' };
+                const timeText = (r.startTime && r.endTime) 
+                    ? `${r.startDate} ${r.startTime} ~ ${r.endDate} ${r.endTime}`
+                    : `${r.startDate} ~ ${r.endDate}`;
+                const durationText = formatMinutes(r.minutes);
+
+                return `
+                    <tr class="border-b hover:bg-purple-50/50">
+                        <td class="p-3 font-medium">${emp.name} <span class="text-xs text-gray-400">(${emp.dept})</span></td>
+                        <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-macaron-pink text-pink-700">${r.type}</span></td>
+                        <td class="p-3 text-xs text-gray-600">${timeText}</td>
+                        <td class="p-3 font-semibold text-purple-700">${durationText}</td>
+                        <td class="p-3 text-gray-500 text-xs">${r.reason || '-'}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="deleteRecord('${r.id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 渲染統計報表
+        function renderStats() {
+            const selectedMonth = document.getElementById('statsMonth').value; // YYYY-MM
+            const sortBy = document.getElementById('statsSort').value;
+
+            const header = document.getElementById('statsHeader');
+            const tbody = document.getElementById('statsTableBody');
+
+            // 標題列
+            header.innerHTML = `
+                <th class="p-3 rounded-l-lg">姓名</th>
+                <th class="p-3">部門</th>
+                ${appData.leaveTypes.map(t => `<th class="p-3 text-center">${t}</th>`).join('')}
+                <th class="p-3 rounded-r-lg text-center">總計時數</th>
+            `;
+
+            // 排序員工
+            let sortedEmps = [...appData.employees];
+            if (sortBy === 'dept') {
+                sortedEmps.sort((a, b) => a.dept.localeCompare(b.dept, 'zh-TW'));
+            } else {
+                sortedEmps.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+            }
+
+            // 渲染資料列
+            tbody.innerHTML = sortedEmps.map(emp => {
+                // 篩選該員工當月的請假紀錄
+                const empRecords = appData.records.filter(r => r.empId === emp.id && r.startDate.startsWith(selectedMonth));
+                
+                let rowTotalMinutes = 0;
+                
+                const typeColumns = appData.leaveTypes.map(type => {
+                    const typeMins = empRecords.filter(r => r.type === type).reduce((sum, r) => sum + r.minutes, 0);
+                    rowTotalMinutes += typeMins;
+                    return `<td class="p-3 text-center font-medium ${typeMins > 0 ? 'text-pink-600' : 'text-gray-300'}">${typeMins > 0 ? formatMinutes(typeMins) : '-'}</td>`;
+                }).join('');
+
+                return `
+                    <tr class="border-b hover:bg-purple-50/50">
+                        <td class="p-3 font-bold text-gray-800">${emp.name}</td>
+                        <td class="p-3 text-gray-500">${emp.dept}</td>
+                        ${typeColumns}
+                        <td class="p-3 text-center font-bold text-purple-700 bg-purple-50/30">${formatMinutes(rowTotalMinutes)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ========== 人員與類別設定 Logic ==========
+        function renderSettings() {
+            // 員工列表
+            document.getElementById('empList').innerHTML = appData.employees.map(e => `
+                <li class="py-2 flex justify-between items-center">
+                    <span><strong>${e.name}</strong> <span class="text-xs text-gray-400">(${e.dept})</span></span>
+                    <button onclick="deleteEmployee('${e.id}')" class="text-red-400 hover:text-red-600 text-xs"><i class="fa-solid fa-trash"></i></button>
+                </li>
+            `).join('');
+
+            // 部門列表
+            document.getElementById('deptList').innerHTML = appData.departments.map(d => `
+                <li class="py-2 flex justify-between items-center">
+                    <span>${d}</span>
+                    <button onclick="deleteDepartment('${d}')" class="text-red-400 hover:text-red-600 text-xs"><i class="fa-solid fa-trash"></i></button>
+                </li>
+            `).join('');
+
+            // 假別列表
+            document.getElementById('leaveTypeList').innerHTML = appData.leaveTypes.map(t => `
+                <li class="py-2 flex justify-between items-center">
+                    <span>${t}</span>
+                    <button onclick="deleteLeaveType('${t}')" class="text-red-400 hover:text-red-600 text-xs"><i class="fa-solid fa-trash"></i></button>
+                </li>
+            `).join('');
+        }
+
+        function addEmployee() {
+            const name = document.getElementById('newEmpName').value.trim();
+            const dept = document.getElementById('newEmpDept').value;
+            if (!name) return alert('請輸入員工姓名');
+            appData.employees.push({ id: 'e_' + Date.now(), name, dept });
+            document.getElementById('newEmpName').value = '';
+            saveData();
+        }
+
+        function deleteEmployee(id) {
+            if (confirm('確定要刪除該員工嗎？（歷史紀錄仍會保留）')) {
+                appData.employees = appData.employees.filter(e => e.id !== id);
+                saveData();
+            }
+        }
+
+        function addDepartment() {
+            const name = document.getElementById('newDeptInput').value.trim();
+            if (!name) return;
+            if (appData.departments.includes(name)) return alert('部門已存在');
+            appData.departments.push(name);
+            document.getElementById('newDeptInput').value = '';
+            saveData();
+        }
+
+        function deleteDepartment(name) {
+            if (confirm(`刪除部門 [${name}] 不會刪除員工，但會移除長駐選項。確定？`)) {
+                appData.departments = appData.departments.filter(d => d !== name);
+                saveData();
+            }
+        }
+
+        function addLeaveType() {
+            const name = document.getElementById('newLeaveTypeInput').value.trim();
+            if (!name) return;
+            if (appData.leaveTypes.includes(name)) return alert('假別已存在');
+            appData.leaveTypes.push(name);
+            document.getElementById('newLeaveTypeInput').value = '';
+            saveData();
+        }
+
+        function deleteLeaveType(name) {
+            if (confirm(`刪除假別 [${name}] 會影響統計列顯示。確定？`)) {
+                appData.leaveTypes = appData.leaveTypes.filter(t => t !== name);
+                saveData();
+            }
+        }
+
+        // ========== 匯出/匯入 Logic ==========
+        // 1. 備份紀錄 (JSON)
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `請假系統備份_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        // 2. 還原紀錄 (JSON)
+        function importJSON(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function (e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData.employees && importedData.records) {
+                        appData = importedData;
+                        saveData();
+                        alert('紀錄成功還原！');
+                    } else {
+                        alert('檔案格式不正確');
+                    }
+                } catch (err) {
+                    alert('讀取檔案失敗：' + err);
+                }
+            };
+            fileReader.readAsText(event.target.files[0]);
+        }
+
+        // 3. 匯出 Excel (使用 SheetJS)
+        function exportExcel() {
+            const selectedMonth = document.getElementById('statsMonth').value;
+            
+            // 準備報表資料
+            const excelData = appData.employees.map(emp => {
+                const empRecords = appData.records.filter(r => r.empId === emp.id && r.startDate.startsWith(selectedMonth));
+                const row = {
+                    '員工姓名': emp.name,
+                    '部門': emp.dept
+                };
+                
+                let totalMins = 0;
+                appData.leaveTypes.forEach(type => {
+                    const mins = empRecords.filter(r => r.type === type).reduce((sum, r) => sum + r.minutes, 0);
+                    row[type] = formatMinutes(mins);
+                    totalMins += mins;
+                });
+                row['總計時數'] = formatMinutes(totalMins);
+                return row;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, `${selectedMonth} 請假統計`);
+
+            XLSX.writeFile(workbook, `員工請假月報表_${selectedMonth}.xlsx`);
+        }
+    </script>
+</body>
+</html>
