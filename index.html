@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>員工出勤請假管理系統</title>
-    <!-- Tailwind CSS (UI框架) -->
+    <title>人員出勤請假管理系統</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome (圖示) -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS (Excel匯出套件) -->
+    <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
-        /* 馬卡龍色系客製化 */
         body { background-color: #FAF5FF; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
         .bg-macaron-pink { background-color: #FCE7F3; }
         .bg-macaron-blue { background-color: #E0F2FE; }
@@ -33,13 +32,13 @@
 <body class="text-gray-700 pb-12">
 
     <!-- 頂部導覽列 -->
-    <header class="bg-white border-b border-purple-100 sticky top-0 z-50">
+    <header class="bg-white border-b border-purple-100 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-full bg-macaron-pink flex items-center justify-center text-pink-500 font-bold text-xl">
                     <i class="fa-solid fa-calendar-check"></i>
                 </div>
-                <h1 class="text-xl font-bold text-gray-800">出勤請假管理系統</h1>
+                <h1 class="text-xl font-bold text-gray-800">人員出勤請假管理系統</h1>
             </div>
             <!-- 備份/匯入匯出 -->
             <div class="flex space-x-2 text-sm">
@@ -81,9 +80,9 @@
                     <i class="fa-solid fa-plus-circle text-pink-400 mr-2"></i>新增請假紀錄
                 </h2>
                 <form id="leaveForm" onsubmit="handleLeaveSubmit(event)">
-                    <!-- 選擇員工 -->
+                    <!-- 選擇人員 -->
                     <div class="mb-4">
-                        <label class="block text-sm font-medium mb-1">員工</label>
+                        <label class="block text-sm font-medium mb-1">人員</label>
                         <select id="leaveEmp" required class="w-full border-gray-200 rounded-lg p-2.5 border focus:ring-2 focus:ring-pink-300 outline-none">
                             <!-- JS 動態渲染 -->
                         </select>
@@ -103,7 +102,7 @@
                             <label class="block text-sm font-medium">請假起始時間</label>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
-                            <input type="date" id="startDate" required class="border-gray-200 rounded-lg p-2 border text-sm">
+                            <input type="date" id="startDate" required min="2000-01-01" max="2099-12-31" class="border-gray-200 rounded-lg p-2 border text-sm">
                             <input type="time" id="startTime" class="border-gray-200 rounded-lg p-2 border text-sm">
                         </div>
                     </div>
@@ -116,10 +115,20 @@
                             </label>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
-                            <input type="date" id="endDate" required class="border-gray-200 rounded-lg p-2 border text-sm">
+                            <input type="date" id="endDate" required min="2000-01-01" max="2099-12-31" class="border-gray-200 rounded-lg p-2 border text-sm">
                             <input type="time" id="endTime" class="border-gray-200 rounded-lg p-2 border text-sm">
                         </div>
                         <p class="text-xs text-gray-400 mt-1">* 若未填寫具體時間，每一整天預設以 8 小時計算</p>
+                    </div>
+
+                    <!-- 狀態勾選項 (已送假單、請假證明) -->
+                    <div class="mb-4 flex space-x-6 bg-purple-50/50 p-2.5 rounded-xl border border-purple-100">
+                        <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="isSubmitted" class="w-4 h-4 text-pink-500 rounded border-gray-300 focus:ring-pink-400 mr-2"> 已送假單
+                        </label>
+                        <label class="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                            <input type="checkbox" id="hasProof" class="w-4 h-4 text-pink-500 rounded border-gray-300 focus:ring-pink-400 mr-2"> 請假證明
+                        </label>
                     </div>
 
                     <!-- 請假原由 -->
@@ -134,18 +143,31 @@
 
             <!-- 請假紀錄清單 -->
             <div class="lg:col-span-2 bg-white p-6 rounded-2xl card-shadow border border-purple-50">
-                <h2 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b flex items-center justify-between">
-                    <span><i class="fa-solid fa-list text-sky-400 mr-2"></i>請假紀錄歷史</span>
-                    <span class="text-xs text-gray-400 font-normal">共 <span id="recordCount">0</span> 筆</span>
-                </h2>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-2 border-b">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                        <i class="fa-solid fa-list text-sky-400 mr-2"></i>請假紀錄歷史
+                        <span class="text-xs text-gray-400 font-normal ml-2">(共 <span id="recordCount">0</span> 筆)</span>
+                    </h2>
+                    
+                    <!-- 請假紀錄排序選單 -->
+                    <div class="flex items-center space-x-2 text-sm">
+                        <label class="text-gray-500 font-medium">排序方式：</label>
+                        <select id="recordSort" onchange="renderRecordList()" class="border-gray-200 rounded-lg p-1.5 border text-xs focus:ring-2 focus:ring-pink-300 outline-none">
+                            <option value="time">按起訖時間 (舊 → 新)</option>
+                            <option value="name">按人員姓名 (分組顯示)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-sm">
-                        <thead>
+                        <thead id="recordTableHead">
                             <tr class="bg-purple-50 text-gray-600 border-b">
                                 <th class="p-3 rounded-l-lg">姓名 (部門)</th>
                                 <th class="p-3">假別</th>
                                 <th class="p-3">起訖時間</th>
-                                <th class="p-3">時數計算</th>
+                                <th class="p-3">時數</th>
+                                <th class="p-3">狀態</th>
                                 <th class="p-3">事由</th>
                                 <th class="p-3 rounded-r-lg text-center">操作</th>
                             </tr>
@@ -160,23 +182,37 @@
 
         <!-- ==================== 分頁 2：月度統計報表 ==================== -->
         <div id="tab-stats" class="hidden bg-white p-6 rounded-2xl card-shadow border border-purple-50">
-            <!-- 篩選與排序 -->
+            <!-- 篩選與模式切換 -->
             <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b">
                 <div class="flex items-center space-x-3">
                     <label class="font-bold text-gray-700">選擇月份：</label>
                     <input type="month" id="statsMonth" onchange="renderStats()" class="border-gray-200 rounded-lg p-2 border focus:ring-2 focus:ring-pink-300 outline-none">
                 </div>
-                <div class="flex items-center space-x-3">
-                    <label class="font-bold text-gray-700">排序方式：</label>
-                    <select id="statsSort" onchange="renderStats()" class="border-gray-200 rounded-lg p-2 border text-sm">
-                        <option value="dept">按部門排序</option>
-                        <option value="name">按姓名排序</option>
-                    </select>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- 檢視模式切換 (表格 / 月曆) -->
+                    <div class="bg-purple-50 p-1 rounded-xl flex space-x-1 border border-purple-100">
+                        <button id="view-btn-table" onclick="switchStatsView('table')" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-pink-500 shadow-sm">
+                            <i class="fa-solid fa-table-list mr-1"></i>表格統計
+                        </button>
+                        <button id="view-btn-calendar" onclick="switchStatsView('calendar')" class="px-3 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-pink-500">
+                            <i class="fa-solid fa-calendar-days mr-1"></i>月曆檢視
+                        </button>
+                    </div>
+
+                    <!-- 排序選單 -->
+                    <div id="sortContainer" class="flex items-center space-x-2">
+                        <label class="text-sm font-bold text-gray-700">排序：</label>
+                        <select id="statsSort" onchange="renderStats()" class="border-gray-200 rounded-lg p-1.5 border text-sm">
+                            <option value="dept">按部門</option>
+                            <option value="name">按姓名</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <!-- 統計表格 -->
-            <div class="overflow-x-auto">
+            <!-- 1. 表格統計畫面 -->
+            <div id="statsTableView" class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-sm">
                     <thead>
                         <tr id="statsHeader" class="bg-macaron-purple text-purple-900 border-b">
@@ -188,19 +224,35 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- 2. 月曆檢視畫面 -->
+            <div id="statsCalendarView" class="hidden">
+                <div class="grid grid-cols-7 gap-2 text-center font-bold text-gray-600 mb-2">
+                    <div class="py-2 bg-red-50 text-red-500 rounded-lg">日</div>
+                    <div class="py-2 bg-purple-50 rounded-lg">一</div>
+                    <div class="py-2 bg-purple-50 rounded-lg">二</div>
+                    <div class="py-2 bg-purple-50 rounded-lg">三</div>
+                    <div class="py-2 bg-purple-50 rounded-lg">四</div>
+                    <div class="py-2 bg-purple-50 rounded-lg">五</div>
+                    <div class="py-2 bg-blue-50 text-blue-500 rounded-lg">六</div>
+                </div>
+                <div id="calendarGrid" class="grid grid-cols-7 gap-2">
+                    <!-- JS 動態渲染月曆格子 -->
+                </div>
+            </div>
         </div>
 
         <!-- ==================== 分頁 3：人員與類別設定 ==================== -->
         <div id="tab-settings" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- 員工管理 -->
+            <!-- 人員管理 -->
             <div class="bg-white p-6 rounded-2xl card-shadow border border-purple-50">
-                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-users text-pink-400 mr-2"></i>員工管理</h2>
+                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-users text-pink-400 mr-2"></i>人員管理</h2>
                 <div class="space-y-3 mb-4">
-                    <input type="text" id="newEmpName" placeholder="員工姓名" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
+                    <input type="text" id="newEmpName" placeholder="人員姓名" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
                     <select id="newEmpDept" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
                         <!-- JS 動態渲染部門下拉選單 -->
                     </select>
-                    <button onclick="addEmployee()" class="w-full py-2 rounded-lg btn-macaron-primary text-sm font-bold">新增員工</button>
+                    <button onclick="addEmployee()" class="w-full py-2 rounded-lg btn-macaron-primary text-sm font-bold">新增人員</button>
                 </div>
                 <ul id="empList" class="divide-y text-sm max-h-60 overflow-y-auto">
                     <!-- JS 動態渲染 -->
@@ -209,7 +261,7 @@
 
             <!-- 部門別管理 -->
             <div class="bg-white p-6 rounded-2xl card-shadow border border-purple-50">
-                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-building text-sky-400 mr-2"></i>部門別長駐選項</h2>
+                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-building text-sky-400 mr-2"></i>部門別</h2>
                 <div class="flex space-x-2 mb-4">
                     <input type="text" id="newDeptInput" placeholder="新部門名稱" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
                     <button onclick="addDepartment()" class="px-4 py-2 rounded-lg btn-macaron-secondary text-sm font-bold whitespace-nowrap">新增</button>
@@ -221,7 +273,7 @@
 
             <!-- 假別管理 -->
             <div class="bg-white p-6 rounded-2xl card-shadow border border-purple-50">
-                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-tags text-emerald-400 mr-2"></i>假別長駐選項</h2>
+                <h2 class="text-md font-bold text-gray-800 mb-4 pb-2 border-b"><i class="fa-solid fa-tags text-emerald-400 mr-2"></i>假別</h2>
                 <div class="flex space-x-2 mb-4">
                     <input type="text" id="newLeaveTypeInput" placeholder="新假別名稱" class="w-full border-gray-200 rounded-lg p-2 border text-sm">
                     <button onclick="addLeaveType()" class="px-4 py-2 rounded-lg btn-macaron-success text-sm font-bold whitespace-nowrap">新增</button>
@@ -234,39 +286,101 @@
 
     </main>
 
+    <!-- ==================== 彈出視窗：編輯請假紀錄 ==================== -->
+    <div id="editRecordModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 card-shadow border border-purple-100">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">編輯請假紀錄</h3>
+            <form onsubmit="saveEditRecord(event)">
+                <input type="hidden" id="editRecId">
+                <div class="mb-3">
+                    <label class="block text-xs font-medium mb-1">人員</label>
+                    <select id="editRecEmp" required class="w-full border-gray-200 rounded-lg p-2 border text-sm"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-xs font-medium mb-1">假別</label>
+                    <select id="editRecType" required class="w-full border-gray-200 rounded-lg p-2 border text-sm"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-xs font-medium mb-1">起始時間</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="editStartDate" required min="2000-01-01" max="2099-12-31" class="border-gray-200 rounded-lg p-2 border text-sm">
+                        <input type="time" id="editStartTime" class="border-gray-200 rounded-lg p-2 border text-sm">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-xs font-medium mb-1">結束時間</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="editEndDate" required min="2000-01-01" max="2099-12-31" class="border-gray-200 rounded-lg p-2 border text-sm">
+                        <input type="time" id="editEndTime" class="border-gray-200 rounded-lg p-2 border text-sm">
+                    </div>
+                </div>
+                <div class="mb-3 flex space-x-6 bg-purple-50/50 p-2 rounded-xl">
+                    <label class="flex items-center text-xs font-medium text-gray-700 cursor-pointer">
+                        <input type="checkbox" id="editIsSubmitted" class="rounded text-pink-500 mr-1.5"> 已送假單
+                    </label>
+                    <label class="flex items-center text-xs font-medium text-gray-700 cursor-pointer">
+                        <input type="checkbox" id="editHasProof" class="rounded text-pink-500 mr-1.5"> 請假證明
+                    </label>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-medium mb-1">事由</label>
+                    <textarea id="editReason" rows="2" class="w-full border-gray-200 rounded-lg p-2 border text-sm"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeEditModal('editRecordModal')" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm">取消</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg btn-macaron-primary text-sm font-bold">儲存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== 彈出視窗：編輯人員資料 ==================== -->
+    <div id="editEmpModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 card-shadow border border-purple-100">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">編輯人員資料</h3>
+            <form onsubmit="saveEditEmp(event)">
+                <input type="hidden" id="editEmpId">
+                <div class="mb-3">
+                    <label class="block text-xs font-medium mb-1">人員姓名</label>
+                    <input type="text" id="editEmpName" required class="w-full border-gray-200 rounded-lg p-2 border text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-medium mb-1">所屬部門</label>
+                    <select id="editEmpDept" class="w-full border-gray-200 rounded-lg p-2 border text-sm"></select>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeEditModal('editEmpModal')" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm">取消</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg btn-macaron-primary text-sm font-bold">儲存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- JS Logic -->
     <script>
         // 初始化預設資料結構
         const defaultData = {
-            departments: [""],
+            departments: [],
             leaveTypes: ["特休", "補休", "事假", "病假", "生理假", "遲到"],
-            employees: [
-                { id: "", name: "", dept: "" },
-            ],
+            employees: [],
             records: []
         };
 
-        // 從 LocalStorage 載入資料或使用預設資料
         let appData = JSON.parse(localStorage.getItem('hr_leave_app_data')) || defaultData;
+        let currentStatsView = 'table';
 
-        // 初始化
         document.addEventListener('DOMContentLoaded', () => {
-            // 設定月度統計預設為當月
             const today = new Date();
             const yearMonth = today.toISOString().slice(0, 7);
             document.getElementById('statsMonth').value = yearMonth;
-            
-            // 初始化選單與渲染
             renderAll();
         });
 
-        // 儲存至 LocalStorage
         function saveData() {
             localStorage.setItem('hr_leave_app_data', JSON.stringify(appData));
             renderAll();
         }
 
-        // 渲染全頁 UI
         function renderAll() {
             renderOptions();
             renderRecordList();
@@ -274,7 +388,6 @@
             renderSettings();
         }
 
-        // 分頁切換
         function switchTab(tabName) {
             ['record', 'stats', 'settings'].forEach(t => {
                 document.getElementById(`tab-${t}`).classList.add('hidden');
@@ -287,7 +400,30 @@
             activeBtn.className = "px-5 py-2.5 font-bold rounded-t-xl transition bg-white text-pink-500 border-t-2 border-x border-pink-400";
         }
 
-        // 同日連動勾選
+        function switchStatsView(mode) {
+            currentStatsView = mode;
+            const btnTable = document.getElementById('view-btn-table');
+            const btnCal = document.getElementById('view-btn-calendar');
+            const tableContainer = document.getElementById('statsTableView');
+            const calContainer = document.getElementById('statsCalendarView');
+            const sortContainer = document.getElementById('sortContainer');
+
+            if (mode === 'table') {
+                btnTable.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-pink-500 shadow-sm";
+                btnCal.className = "px-3 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-pink-500";
+                tableContainer.classList.remove('hidden');
+                calContainer.classList.add('hidden');
+                sortContainer.classList.remove('hidden');
+            } else {
+                btnCal.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-pink-500 shadow-sm";
+                btnTable.className = "px-3 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-pink-500";
+                tableContainer.classList.add('hidden');
+                calContainer.classList.remove('hidden');
+                sortContainer.classList.add('hidden');
+            }
+            renderStats();
+        }
+
         function toggleSameDay(checkbox) {
             const startDate = document.getElementById('startDate').value;
             const endDateInput = document.getElementById('endDate');
@@ -304,42 +440,45 @@
             }
         });
 
-        // 渲染下拉選單
         function renderOptions() {
-            // 請假登記-員工下拉
-            const empSelect = document.getElementById('leaveEmp');
-            empSelect.innerHTML = appData.employees.map(e => `<option value="${e.id}">${e.name} (${e.dept})</option>`).join('');
+            // 人員下拉選單
+            const empOptionsHtml = appData.employees.length === 0
+                ? `<option value="">-- 請先至設定新增人員 --</option>`
+                : appData.employees.map(e => `<option value="${e.id}">${e.name} (${e.dept || '無部門'})</option>`).join('');
             
-            // 請假登記-假別下拉
-            const typeSelect = document.getElementById('leaveType');
-            typeSelect.innerHTML = appData.leaveTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+            document.getElementById('leaveEmp').innerHTML = empOptionsHtml;
+            document.getElementById('editRecEmp').innerHTML = empOptionsHtml;
+            
+            // 假別下拉選單
+            const typeOptionsHtml = appData.leaveTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+            document.getElementById('leaveType').innerHTML = typeOptionsHtml;
+            document.getElementById('editRecType').innerHTML = typeOptionsHtml;
 
-            // 新增員工-部門下拉
-            const deptSelect = document.getElementById('newEmpDept');
-            deptSelect.innerHTML = appData.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+            // 部門下拉選單
+            const deptOptionsHtml = appData.departments.length === 0
+                ? `<option value="">-- 無部門 --</option>`
+                : appData.departments.map(d => `<option value="${d}">${d}</option>`).join('');
+            
+            document.getElementById('newEmpDept').innerHTML = deptOptionsHtml;
+            document.getElementById('editEmpDept').innerHTML = deptOptionsHtml;
         }
 
-        // 計算請假分鐘數與格式化字串
         function calculateLeaveDuration(startDateStr, startTimeStr, endDateStr, endTimeStr) {
             if (!startTimeStr || !endTimeStr) {
-                // 未填寫時間：按全天算 (每天 8 小時)
                 const start = new Date(startDateStr);
                 const end = new Date(endDateStr);
                 const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
                 const totalMinutes = diffDays > 0 ? diffDays * 8 * 60 : 0;
                 return { totalMinutes, display: `${diffDays * 8} 小時 (共 ${diffDays} 天)` };
             } else {
-                // 有填寫精確時間
                 const start = new Date(`${startDateStr}T${startTimeStr}`);
                 const end = new Date(`${endDateStr}T${endTimeStr}`);
                 let diffMins = Math.floor((end - start) / (1000 * 60));
                 if (diffMins < 0) diffMins = 0;
-
                 return { totalMinutes: diffMins, display: formatMinutes(diffMins) };
             }
         }
 
-        // 分鐘轉格式化文字 (例如 2.5 小時 或 2 h 15 min)
         function formatMinutes(mins) {
             if (mins <= 0) return '0 小時';
             const hours = Math.floor(mins / 60);
@@ -354,15 +493,62 @@
             }
         }
 
+        function getDailyBreakdown(r) {
+            const items = [];
+            let cur = new Date(r.startDate);
+            const end = new Date(r.endDate);
+
+            cur.setHours(0,0,0,0);
+            end.setHours(0,0,0,0);
+
+            while (cur <= end) {
+                const y = cur.getFullYear();
+                const m = String(cur.getMonth() + 1).padStart(2, '0');
+                const d = String(cur.getDate()).padStart(2, '0');
+                const dateStr = `${y}-${m}-${d}`;
+                
+                let dayMinutes = 480;
+
+                if (r.startTime && r.endTime) {
+                    if (r.startDate === r.endDate) {
+                        dayMinutes = r.minutes;
+                    } else if (dateStr === r.startDate) {
+                        const sTime = new Date(`${dateStr}T${r.startTime}`);
+                        const eTime = new Date(`${dateStr}T18:00`);
+                        dayMinutes = Math.max(0, Math.floor((eTime - sTime) / 60000));
+                    } else if (dateStr === r.endDate) {
+                        const sTime = new Date(`${dateStr}T09:00`);
+                        const eTime = new Date(`${dateStr}T${r.endTime}`);
+                        dayMinutes = Math.max(0, Math.floor((eTime - sTime) / 60000));
+                    }
+                }
+
+                items.push({
+                    date: dateStr,
+                    empId: r.empId,
+                    type: r.type,
+                    minutes: dayMinutes,
+                    reason: r.reason
+                });
+
+                cur.setDate(cur.getDate() + 1);
+            }
+            return items;
+        }
+
         // 新增請假紀錄
         function handleLeaveSubmit(e) {
             e.preventDefault();
             const empId = document.getElementById('leaveEmp').value;
+            if (!empId) return alert('請選擇人員！若無人員請先至「人員與類別設定」新增。');
+
             const type = document.getElementById('leaveType').value;
             const startDate = document.getElementById('startDate').value;
             const startTime = document.getElementById('startTime').value;
             const endDate = document.getElementById('endDate').value;
             const endTime = document.getElementById('endTime').value;
+            const isSubmitted = document.getElementById('isSubmitted').checked;
+            const hasProof = document.getElementById('hasProof').checked;
             const reason = document.getElementById('leaveReason').value;
 
             const duration = calculateLeaveDuration(startDate, startTime, endDate, endTime);
@@ -376,6 +562,8 @@
                 endDate,
                 endTime,
                 minutes: duration.totalMinutes,
+                isSubmitted,
+                hasProof,
                 reason
             };
 
@@ -394,66 +582,221 @@
             }
         }
 
-        // 渲染請假紀錄清單
+        // 編輯請假紀錄 - 開啟視窗
+        function openEditRecordModal(id) {
+            const r = appData.records.find(rec => rec.id === id);
+            if (!r) return;
+
+            document.getElementById('editRecId').value = r.id;
+            document.getElementById('editRecEmp').value = r.empId;
+            document.getElementById('editRecType').value = r.type;
+            document.getElementById('editStartDate').value = r.startDate;
+            document.getElementById('editStartTime').value = r.startTime || '';
+            document.getElementById('editEndDate').value = r.endDate;
+            document.getElementById('editEndTime').value = r.endTime || '';
+            document.getElementById('editIsSubmitted').checked = !!r.isSubmitted;
+            document.getElementById('editHasProof').checked = !!r.hasProof;
+            document.getElementById('editReason').value = r.reason || '';
+
+            document.getElementById('editRecordModal').classList.remove('hidden');
+        }
+
+        // 編輯請假紀錄 - 儲存
+        function saveEditRecord(e) {
+            e.preventDefault();
+            const id = document.getElementById('editRecId').value;
+            const index = appData.records.findIndex(r => r.id === id);
+            if (index === -1) return;
+
+            const startDate = document.getElementById('editStartDate').value;
+            const startTime = document.getElementById('editStartTime').value;
+            const endDate = document.getElementById('editEndDate').value;
+            const endTime = document.getElementById('editEndTime').value;
+            const duration = calculateLeaveDuration(startDate, startTime, endDate, endTime);
+
+            appData.records[index] = {
+                ...appData.records[index],
+                empId: document.getElementById('editRecEmp').value,
+                type: document.getElementById('editRecType').value,
+                startDate,
+                startTime,
+                endDate,
+                endTime,
+                minutes: duration.totalMinutes,
+                isSubmitted: document.getElementById('editIsSubmitted').checked,
+                hasProof: document.getElementById('editHasProof').checked,
+                reason: document.getElementById('editReason').value
+            };
+
+            saveData();
+            closeEditModal('editRecordModal');
+        }
+
+        function closeEditModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // 渲染請假紀錄歷史 (支援時間排序與按姓名分組排序)
         function renderRecordList() {
             const tbody = document.getElementById('recordTableBody');
+            const thead = document.getElementById('recordTableHead');
+            const sortBy = document.getElementById('recordSort').value;
             document.getElementById('recordCount').innerText = appData.records.length;
 
-            tbody.innerHTML = appData.records.map(r => {
-                const emp = appData.employees.find(e => e.id === r.empId) || { name: '已刪除員工', dept: '-' };
-                const timeText = (r.startTime && r.endTime) 
-                    ? `${r.startDate} ${r.startTime} ~ ${r.endDate} ${r.endTime}`
-                    : `${r.startDate} ~ ${r.endDate}`;
-                const durationText = formatMinutes(r.minutes);
+            if (appData.records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">尚無請假紀錄</td></tr>`;
+                return;
+            }
 
-                return `
-                    <tr class="border-b hover:bg-purple-50/50">
-                        <td class="p-3 font-medium">${emp.name} <span class="text-xs text-gray-400">(${emp.dept})</span></td>
-                        <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-macaron-pink text-pink-700">${r.type}</span></td>
-                        <td class="p-3 text-xs text-gray-600">${timeText}</td>
-                        <td class="p-3 font-semibold text-purple-700">${durationText}</td>
-                        <td class="p-3 text-gray-500 text-xs">${r.reason || '-'}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="deleteRecord('${r.id}')" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
-                        </td>
+            // 1. 按起訖時間排序 (預設從舊到新，即月初到月末)
+            if (sortBy === 'time') {
+                thead.innerHTML = `
+                    <tr class="bg-purple-50 text-gray-600 border-b">
+                        <th class="p-3 rounded-l-lg">姓名 (部門)</th>
+                        <th class="p-3">假別</th>
+                        <th class="p-3">起訖時間</th>
+                        <th class="p-3">時數</th>
+                        <th class="p-3">狀態</th>
+                        <th class="p-3">事由</th>
+                        <th class="p-3 rounded-r-lg text-center">操作</th>
                     </tr>
                 `;
-            }).join('');
+
+                let sortedRecords = [...appData.records].sort((a, b) => {
+                    const timeA = `${a.startDate} ${a.startTime || '00:00'}`;
+                    const timeB = `${b.startDate} ${b.startTime || '00:00'}`;
+                    return timeA.localeCompare(timeB);
+                });
+
+                tbody.innerHTML = sortedRecords.map(r => renderRecordRowHtml(r, true)).join('');
+            } 
+            // 2. 按人員姓名分組顯示
+            else if (sortBy === 'name') {
+                thead.innerHTML = `
+                    <tr class="bg-purple-50 text-gray-600 border-b">
+                        <th class="p-3 rounded-l-lg">假別</th>
+                        <th class="p-3">起訖時間</th>
+                        <th class="p-3">時數</th>
+                        <th class="p-3">狀態</th>
+                        <th class="p-3">事由</th>
+                        <th class="p-3 rounded-r-lg text-center">操作</th>
+                    </tr>
+                `;
+
+                // 分組邏輯
+                let groupedHtml = '';
+                appData.employees.forEach(emp => {
+                    const empRecords = appData.records
+                        .filter(r => r.empId === emp.id)
+                        .sort((a, b) => `${a.startDate}`.localeCompare(`${b.startDate}`));
+
+                    if (empRecords.length > 0) {
+                        // 人員分組小標題
+                        groupedHtml += `
+                            <tr class="bg-purple-100/60 font-bold text-purple-900 border-t border-b">
+                                <td colspan="6" class="p-2.5 px-3">
+                                    <i class="fa-solid fa-user-tag text-pink-400 mr-2"></i>${emp.name} 
+                                    <span class="text-xs font-normal text-purple-600">(${emp.dept || '無部門'}) - 共 ${empRecords.length} 筆請假</span>
+                                </td>
+                            </tr>
+                        `;
+                        groupedHtml += empRecords.map(r => renderRecordRowHtml(r, false)).join('');
+                    }
+                });
+
+                // 處理已被刪除人員的歷史紀錄
+                const orphanRecords = appData.records.filter(r => !appData.employees.some(e => e.id === r.empId));
+                if (orphanRecords.length > 0) {
+                    groupedHtml += `
+                        <tr class="bg-gray-100 font-bold text-gray-700 border-t border-b">
+                            <td colspan="6" class="p-2.5 px-3"><i class="fa-solid fa-user-slash mr-2"></i>已刪除人員紀錄</td>
+                        </tr>
+                    `;
+                    groupedHtml += orphanRecords.map(r => renderRecordRowHtml(r, false)).join('');
+                }
+
+                tbody.innerHTML = groupedHtml;
+            }
+        }
+
+        // 單筆請假紀錄 HTML 渲染模組
+        function renderRecordRowHtml(r, showNameColumn) {
+            const emp = appData.employees.find(e => e.id === r.empId) || { name: '已刪人員', dept: '-' };
+            const timeText = (r.startTime && r.endTime) 
+                ? `${r.startDate} ${r.startTime} ~ ${r.endDate} ${r.endTime}`
+                : `${r.startDate} ~ ${r.endDate}`;
+            const durationText = formatMinutes(r.minutes);
+
+            // 狀態標籤 (已送假單 / 請假證明)
+            const submittedTag = r.isSubmitted 
+                ? `<span class="px-2 py-0.5 rounded text-[11px] bg-emerald-100 text-emerald-700 font-bold">已送單</span>`
+                : `<span class="px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-400">未送單</span>`;
+            
+            const proofTag = r.hasProof 
+                ? `<span class="px-2 py-0.5 rounded text-[11px] bg-sky-100 text-sky-700 font-bold">有證明</span>`
+                : `<span class="px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-400">無證明</span>`;
+
+            return `
+                <tr class="border-b hover:bg-purple-50/50">
+                    ${showNameColumn ? `<td class="p-3 font-medium">${emp.name} <span class="text-xs text-gray-400">(${emp.dept || '無部門'})</span></td>` : ''}
+                    <td class="p-3"><span class="px-2.5 py-1 rounded-full text-xs font-bold bg-macaron-pink text-pink-700">${r.type}</span></td>
+                    <td class="p-3 text-xs text-gray-600">${timeText}</td>
+                    <td class="p-3 font-semibold text-purple-700">${durationText}</td>
+                    <td class="p-3"><div class="flex space-x-1">${submittedTag}${proofTag}</div></td>
+                    <td class="p-3 text-gray-500 text-xs">${r.reason || '-'}</td>
+                    <td class="p-3 text-center space-x-2">
+                        <button onclick="openEditRecordModal('${r.id}')" class="text-sky-500 hover:text-sky-700" title="編輯"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="deleteRecord('${r.id}')" class="text-red-400 hover:text-red-600" title="刪除"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
         }
 
         // 渲染統計報表
         function renderStats() {
-            const selectedMonth = document.getElementById('statsMonth').value; // YYYY-MM
-            const sortBy = document.getElementById('statsSort').value;
+            const selectedMonth = document.getElementById('statsMonth').value;
+            if (!selectedMonth) return;
 
+            const allDailyItems = appData.records.flatMap(r => getDailyBreakdown(r));
+            const monthDailyItems = allDailyItems.filter(item => item.date.startsWith(selectedMonth));
+
+            if (currentStatsView === 'table') {
+                renderTableView(selectedMonth, monthDailyItems);
+            } else {
+                renderCalendarView(selectedMonth, monthDailyItems);
+            }
+        }
+
+        function renderTableView(selectedMonth, monthDailyItems) {
+            const sortBy = document.getElementById('statsSort').value;
             const header = document.getElementById('statsHeader');
             const tbody = document.getElementById('statsTableBody');
 
-            // 標題列
             header.innerHTML = `
                 <th class="p-3 rounded-l-lg">姓名</th>
                 <th class="p-3">部門</th>
                 ${appData.leaveTypes.map(t => `<th class="p-3 text-center">${t}</th>`).join('')}
-                <th class="p-3 rounded-r-lg text-center">總計時數</th>
+                <th class="p-3 rounded-r-lg text-center">當月總計時數</th>
             `;
 
-            // 排序員工
             let sortedEmps = [...appData.employees];
             if (sortBy === 'dept') {
-                sortedEmps.sort((a, b) => a.dept.localeCompare(b.dept, 'zh-TW'));
+                sortedEmps.sort((a, b) => (a.dept || '').localeCompare(b.dept || '', 'zh-TW'));
             } else {
                 sortedEmps.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
             }
 
-            // 渲染資料列
+            if (sortedEmps.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${appData.leaveTypes.length + 3}" class="p-6 text-center text-gray-400">尚無人員資料</td></tr>`;
+                return;
+            }
+
             tbody.innerHTML = sortedEmps.map(emp => {
-                // 篩選該員工當月的請假紀錄
-                const empRecords = appData.records.filter(r => r.empId === emp.id && r.startDate.startsWith(selectedMonth));
-                
+                const empMonthItems = monthDailyItems.filter(item => item.empId === emp.id);
                 let rowTotalMinutes = 0;
                 
                 const typeColumns = appData.leaveTypes.map(type => {
-                    const typeMins = empRecords.filter(r => r.type === type).reduce((sum, r) => sum + r.minutes, 0);
+                    const typeMins = empMonthItems.filter(item => item.type === type).reduce((sum, item) => sum + item.minutes, 0);
                     rowTotalMinutes += typeMins;
                     return `<td class="p-3 text-center font-medium ${typeMins > 0 ? 'text-pink-600' : 'text-gray-300'}">${typeMins > 0 ? formatMinutes(typeMins) : '-'}</td>`;
                 }).join('');
@@ -461,7 +804,7 @@
                 return `
                     <tr class="border-b hover:bg-purple-50/50">
                         <td class="p-3 font-bold text-gray-800">${emp.name}</td>
-                        <td class="p-3 text-gray-500">${emp.dept}</td>
+                        <td class="p-3 text-gray-500">${emp.dept || '-'}</td>
                         ${typeColumns}
                         <td class="p-3 text-center font-bold text-purple-700 bg-purple-50/30">${formatMinutes(rowTotalMinutes)}</td>
                     </tr>
@@ -469,13 +812,52 @@
             }).join('');
         }
 
+        function renderCalendarView(selectedMonth, monthDailyItems) {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            const [year, month] = selectedMonth.split('-').map(Number);
+            const firstDay = new Date(year, month - 1, 1).getDay();
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="h-28 bg-gray-50/50 rounded-xl border border-dashed border-gray-100"></div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayStr = String(day).padStart(2, '0');
+                const fullDateStr = `${selectedMonth}-${dayStr}`;
+                const dayItems = monthDailyItems.filter(item => item.date === fullDateStr);
+
+                let leavesHtml = dayItems.map(item => {
+                    const emp = appData.employees.find(e => e.id === item.empId) || { name: '已刪人員' };
+                    return `
+                        <div class="bg-macaron-pink border border-pink-200 text-pink-800 rounded-lg px-1.5 py-1 text-xs mb-1 truncate shadow-sm" title="${emp.name} (${item.type})">
+                            <span class="font-bold">${emp.name}</span>
+                            <span class="text-pink-500 text-[10px]"> [${item.type}]</span>
+                        </div>
+                    `;
+                }).join('');
+
+                grid.innerHTML += `
+                    <div class="h-28 bg-white p-1.5 rounded-xl border border-purple-100 flex flex-col justify-start overflow-y-auto">
+                        <div class="text-xs font-bold text-gray-400 mb-1">${day}</div>
+                        ${leavesHtml}
+                    </div>
+                `;
+            }
+        }
+
         // ========== 人員與類別設定 Logic ==========
         function renderSettings() {
-            // 員工列表
+            // 人員列表 (含編輯按鈕)
             document.getElementById('empList').innerHTML = appData.employees.map(e => `
                 <li class="py-2 flex justify-between items-center">
-                    <span><strong>${e.name}</strong> <span class="text-xs text-gray-400">(${e.dept})</span></span>
-                    <button onclick="deleteEmployee('${e.id}')" class="text-red-400 hover:text-red-600 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    <span><strong>${e.name}</strong> <span class="text-xs text-gray-400">(${e.dept || '無部門'})</span></span>
+                    <div class="space-x-2">
+                        <button onclick="openEditEmpModal('${e.id}')" class="text-sky-500 hover:text-sky-700 text-xs"><i class="fa-solid fa-pen-to-square"></i> 編輯</button>
+                        <button onclick="deleteEmployee('${e.id}')" class="text-red-400 hover:text-red-600 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 </li>
             `).join('');
 
@@ -499,14 +881,35 @@
         function addEmployee() {
             const name = document.getElementById('newEmpName').value.trim();
             const dept = document.getElementById('newEmpDept').value;
-            if (!name) return alert('請輸入員工姓名');
-            appData.employees.push({ id: 'e_' + Date.now(), name, dept });
+            if (!name) return alert('請輸入人員姓名');
+            appData.employees.push({ id: 'e_' + Date.now(), name, dept: dept || '' });
             document.getElementById('newEmpName').value = '';
             saveData();
         }
 
+        function openEditEmpModal(id) {
+            const emp = appData.employees.find(e => e.id === id);
+            if (!emp) return;
+            document.getElementById('editEmpId').value = emp.id;
+            document.getElementById('editEmpName').value = emp.name;
+            document.getElementById('editEmpDept').value = emp.dept || '';
+            document.getElementById('editEmpModal').classList.remove('hidden');
+        }
+
+        function saveEditEmp(e) {
+            e.preventDefault();
+            const id = document.getElementById('editEmpId').value;
+            const index = appData.employees.findIndex(emp => emp.id === id);
+            if (index === -1) return;
+
+            appData.employees[index].name = document.getElementById('editEmpName').value.trim();
+            appData.employees[index].dept = document.getElementById('editEmpDept').value;
+            saveData();
+            closeEditModal('editEmpModal');
+        }
+
         function deleteEmployee(id) {
-            if (confirm('確定要刪除該員工嗎？（歷史紀錄仍會保留）')) {
+            if (confirm('確定要刪除該人員嗎？（歷史紀錄仍會保留）')) {
                 appData.employees = appData.employees.filter(e => e.id !== id);
                 saveData();
             }
@@ -522,7 +925,7 @@
         }
 
         function deleteDepartment(name) {
-            if (confirm(`刪除部門 [${name}] 不會刪除員工，但會移除長駐選項。確定？`)) {
+            if (confirm(`刪除部門 [${name}] 不會刪除人員，但會移除選項。確定？`)) {
                 appData.departments = appData.departments.filter(d => d !== name);
                 saveData();
             }
@@ -545,7 +948,6 @@
         }
 
         // ========== 匯出/匯入 Logic ==========
-        // 1. 備份紀錄 (JSON)
         function exportJSON() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
             const dlAnchor = document.createElement('a');
@@ -556,7 +958,6 @@
             dlAnchor.remove();
         }
 
-        // 2. 還原紀錄 (JSON)
         function importJSON(event) {
             const fileReader = new FileReader();
             fileReader.onload = function (e) {
@@ -576,25 +977,25 @@
             fileReader.readAsText(event.target.files[0]);
         }
 
-        // 3. 匯出 Excel (使用 SheetJS)
         function exportExcel() {
             const selectedMonth = document.getElementById('statsMonth').value;
-            
-            // 準備報表資料
+            const allDailyItems = appData.records.flatMap(r => getDailyBreakdown(r));
+            const monthDailyItems = allDailyItems.filter(item => item.date.startsWith(selectedMonth));
+
             const excelData = appData.employees.map(emp => {
-                const empRecords = appData.records.filter(r => r.empId === emp.id && r.startDate.startsWith(selectedMonth));
+                const empMonthItems = monthDailyItems.filter(item => item.empId === emp.id);
                 const row = {
-                    '員工姓名': emp.name,
-                    '部門': emp.dept
+                    '人員姓名': emp.name,
+                    '部門': emp.dept || '-'
                 };
                 
                 let totalMins = 0;
                 appData.leaveTypes.forEach(type => {
-                    const mins = empRecords.filter(r => r.type === type).reduce((sum, r) => sum + r.minutes, 0);
+                    const mins = empMonthItems.filter(item => item.type === type).reduce((sum, item) => sum + item.minutes, 0);
                     row[type] = formatMinutes(mins);
                     totalMins += mins;
                 });
-                row['總計時數'] = formatMinutes(totalMins);
+                row['當月總計時數'] = formatMinutes(totalMins);
                 return row;
             });
 
@@ -602,7 +1003,7 @@
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, `${selectedMonth} 請假統計`);
 
-            XLSX.writeFile(workbook, `員工請假月報表_${selectedMonth}.xlsx`);
+            XLSX.writeFile(workbook, `人員請假月報表_${selectedMonth}.xlsx`);
         }
     </script>
 </body>
