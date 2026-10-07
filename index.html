@@ -463,6 +463,32 @@
             document.getElementById('editEmpDept').innerHTML = deptOptionsHtml;
         }
 
+        // 計算單日時數（自動扣除 12:00 ~ 13:00 午休時間）
+        function calculateSingleDayMinutes(dateStr, startTimeStr, endTimeStr) {
+            if (!startTimeStr || !endTimeStr) return 480; // 預設一整天 8 小時 (480分鐘)
+
+            const start = new Date(`${dateStr}T${startTimeStr}`);
+            const end = new Date(`${dateStr}T${endTimeStr}`);
+            let diffMins = Math.floor((end - start) / (1000 * 60));
+            if (diffMins <= 0) return 0;
+
+            // 午休時間範圍: 12:00 ~ 13:00
+            const lunchStart = new Date(`${dateStr}T12:00`);
+            const lunchEnd = new Date(`${dateStr}T13:00`);
+
+            // 判斷請假區間是否跨過或涵蓋 12:00 ~ 13:00
+            // 重疊區間計算公式：Math.max(0, Math.min(end, lunchEnd) - Math.max(start, lunchStart))
+            const overlapStart = new Date(Math.max(start.getTime(), lunchStart.getTime()));
+            const overlapEnd = new Date(Math.min(end.getTime(), lunchEnd.getTime()));
+            
+            let lunchOverlapMins = 0;
+            if (overlapEnd > overlapStart) {
+                lunchOverlapMins = Math.floor((overlapEnd - overlapStart) / (1000 * 60));
+            }
+
+            return Math.max(0, diffMins - lunchOverlapMins);
+        }
+
         function calculateLeaveDuration(startDateStr, startTimeStr, endDateStr, endTimeStr) {
             if (!startTimeStr || !endTimeStr) {
                 const start = new Date(startDateStr);
@@ -471,11 +497,26 @@
                 const totalMinutes = diffDays > 0 ? diffDays * 8 * 60 : 0;
                 return { totalMinutes, display: `${diffDays * 8} 小時 (共 ${diffDays} 天)` };
             } else {
-                const start = new Date(`${startDateStr}T${startTimeStr}`);
-                const end = new Date(`${endDateStr}T${endTimeStr}`);
-                let diffMins = Math.floor((end - start) / (1000 * 60));
-                if (diffMins < 0) diffMins = 0;
-                return { totalMinutes: diffMins, display: formatMinutes(diffMins) };
+                let totalMinutes = 0;
+                let cur = new Date(startDateStr);
+                const end = new Date(endDateStr);
+                cur.setHours(0,0,0,0);
+                end.setHours(0,0,0,0);
+
+                while (cur <= end) {
+                    const y = cur.getFullYear();
+                    const m = String(cur.getMonth() + 1).padStart(2, '0');
+                    const d = String(cur.getDate()).padStart(2, '0');
+                    const dateStr = `${y}-${m}-${d}`;
+                    
+                    let sTime = (dateStr === startDateStr) ? startTimeStr : '09:00';
+                    let eTime = (dateStr === endDateStr) ? endTimeStr : '18:00';
+
+                    totalMinutes += calculateSingleDayMinutes(dateStr, sTime, eTime);
+                    cur.setDate(cur.getDate() + 1);
+                }
+
+                return { totalMinutes, display: formatMinutes(totalMinutes) };
             }
         }
 
@@ -513,13 +554,11 @@
                     if (r.startDate === r.endDate) {
                         dayMinutes = r.minutes;
                     } else if (dateStr === r.startDate) {
-                        const sTime = new Date(`${dateStr}T${r.startTime}`);
-                        const eTime = new Date(`${dateStr}T18:00`);
-                        dayMinutes = Math.max(0, Math.floor((eTime - sTime) / 60000));
+                        dayMinutes = calculateSingleDayMinutes(dateStr, r.startTime, '18:00');
                     } else if (dateStr === r.endDate) {
-                        const sTime = new Date(`${dateStr}T09:00`);
-                        const eTime = new Date(`${dateStr}T${r.endTime}`);
-                        dayMinutes = Math.max(0, Math.floor((eTime - sTime) / 60000));
+                        dayMinutes = calculateSingleDayMinutes(dateStr, '09:00', r.endTime);
+                    } else {
+                        dayMinutes = calculateSingleDayMinutes(dateStr, '09:00', '18:00');
                     }
                 }
 
